@@ -58,7 +58,7 @@ export default function AdminDashboard() {
   };
 
   const downloadCSV = (type: string) => {
-    let data = [];
+    let data: any[] = [];
     let filename = "";
 
     if (type === "couples") {
