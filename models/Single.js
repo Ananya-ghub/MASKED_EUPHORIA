@@ -11,6 +11,9 @@ const SingleSchema = new mongoose.Schema({
   gender: { type: String },
   preferredMatch: { type: String },
 
+  // Event Attendance Check-In
+  checkedIn: { type: Boolean, default: false },
+
   // Questionnaire fields (only populated if wantsPair is true)
   promVibe: { type: String },
   personalityType: { type: String },

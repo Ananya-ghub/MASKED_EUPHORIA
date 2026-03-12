@@ -8,9 +8,10 @@ export default function AdminDashboard() {
   const [couples, setCouples] = useState([]);
   const [singles, setSingles] = useState([]);
   const [matches, setMatches] = useState({ pairs: [], unmatched: [] });
-
+  
   const [loading, setLoading] = useState(true);
   const [generatingMatches, setGeneratingMatches] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -57,6 +58,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCheckInToggle = async (regno: string, currentStatus: boolean) => {
+    try {
+      // Optimistically update UI
+      setSingles((prev: any) => 
+        prev.map((s: any) => s.regno === regno ? { ...s, checkedIn: !currentStatus } : s)
+      );
+      
+      const res = await fetch("/api/admin/checkin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regno, checkedIn: !currentStatus })
+      });
+      
+      const data = await res.json();
+      if (!data.success) {
+        // Revert on failure
+        setSingles((prev: any) => 
+          prev.map((s: any) => s.regno === regno ? { ...s, checkedIn: currentStatus } : s)
+        );
+        alert(data.message || "Failed to update check-in status");
+      }
+    } catch (error) {
+      console.error(error);
+      // Revert on failure
+      setSingles((prev: any) => 
+        prev.map((s: any) => s.regno === regno ? { ...s, checkedIn: currentStatus } : s)
+      );
+      alert("Error updating check-in status");
+    }
+  };
+
   const downloadCSV = (type: string) => {
     let data: any[] = [];
     let filename = "";
@@ -79,7 +111,10 @@ export default function AdminDashboard() {
         "Name": s.name,
         "Reg No": s.regno,
         "Phone": s.phone,
+        "Gender": s.gender || "N/A",
+        "Preferred Match": s.preferredMatch || "N/A",
         "Wants Pairing": s.wantsPair ? "Yes" : "No",
+        "Checked In": s.checkedIn ? "Yes" : "No",
         "Registered At": new Date(s.createdAt).toLocaleString()
       }));
     } else if (type === "matches") {
@@ -114,6 +149,19 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   };
 
+  const filteredSingles = singles.filter((s: any) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.regno.toLowerCase().includes(q);
+  });
+
+  const stats = {
+    registeredSingles: singles.length,
+    checkedIn: singles.filter((s: any) => s.checkedIn).length,
+    eligibleForMatching: singles.filter((s: any) => s.checkedIn && s.wantsPair).length,
+    matchesGenerated: matches.pairs.length
+  };
+
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="w-10 h-10 text-gold-500 animate-spin" /></div>;
   }
@@ -134,6 +182,26 @@ export default function AdminDashboard() {
           {generatingMatches ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <HeartHandshake className="w-5 h-5 mr-2" />}
           Generate Matches
         </button>
+      </div>
+
+      {/* Statistics Panel */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="glass-panel p-4 rounded-xl border border-gray-800 text-center">
+          <p className="text-gray-400 text-sm mb-1">Registered Singles</p>
+          <p className="text-2xl font-bold text-white">{stats.registeredSingles}</p>
+        </div>
+        <div className="glass-panel p-4 rounded-xl border border-gray-800 text-center">
+          <p className="text-gray-400 text-sm mb-1">Checked In</p>
+          <p className="text-2xl font-bold text-green-400">{stats.checkedIn}</p>
+        </div>
+        <div className="glass-panel p-4 rounded-xl border border-gray-800 text-center">
+          <p className="text-gray-400 text-sm mb-1">Eligible For Matching</p>
+          <p className="text-2xl font-bold text-purple-400">{stats.eligibleForMatching}</p>
+        </div>
+        <div className="glass-panel p-4 rounded-xl border border-gray-800 text-center">
+          <p className="text-gray-400 text-sm mb-1">Matches Generated</p>
+          <p className="text-2xl font-bold text-gold-400">{stats.matchesGenerated}</p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -197,27 +265,54 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === "singles" && (
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-deep-900/50 text-gray-400 border-b border-gray-800">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Contact</th>
-                  <th className="px-4 py-3 font-medium text-center">Wants Pairing</th>
-                  <th className="px-4 py-3 font-medium text-right">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {singles.map((s: any) => (
-                  <tr key={s._id} className="hover:bg-deep-800/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-white">{s.name} <br /><span className="text-xs text-gray-500 font-normal">{s.regno}</span></td>
-                    <td className="px-4 py-3 text-gray-300">{s.phone} <br /><span className="text-xs text-gray-500">{s.email}</span></td>
-                    <td className="px-4 py-3 text-center">{s.wantsPair ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/40 text-green-400 border border-green-500/20">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
-                    <td className="px-4 py-3 text-right text-gray-500 text-xs">{new Date(s.createdAt).toLocaleDateString()}</td>
+            <div className="space-y-4">
+              <input 
+                type="text"
+                placeholder="Search by Name or Registration Number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full md:w-1/2 px-4 py-2 bg-deep-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
+              />
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-deep-900/50 text-gray-400 border-b border-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">Registration Number</th>
+                    <th className="px-4 py-3 font-medium">Gender</th>
+                    <th className="px-4 py-3 font-medium">Preferred Match</th>
+                    <th className="px-4 py-3 font-medium text-center">Wants Pair</th>
+                    <th className="px-4 py-3 font-medium text-center">Checked In</th>
                   </tr>
-                ))}
-                {singles.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500">No single registrations yet.</td></tr>}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {filteredSingles.map((s: any) => (
+                    <tr key={s._id} className="hover:bg-deep-800/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-white">{s.name} <br /><span className="text-xs text-gray-500 font-normal">{s.phone} | {s.email}</span></td>
+                      <td className="px-4 py-3 text-gray-300">{s.regno}</td>
+                      <td className="px-4 py-3 text-gray-300">{s.gender || "-"}</td>
+                      <td className="px-4 py-3 text-gray-300">{s.preferredMatch || "-"}</td>
+                      <td className="px-4 py-3 text-center">{s.wantsPair ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-900/40 text-purple-400 border border-purple-500/20">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
+                      <td className="px-4 py-3 text-center">
+                        <label className="flex items-center justify-center cursor-pointer space-x-2">
+                          <input 
+                            type="checkbox" 
+                            checked={!!s.checkedIn}
+                            onChange={() => handleCheckInToggle(s.regno, !!s.checkedIn)}
+                            className="w-4 h-4 rounded border-gray-600 text-gold-500 focus:ring-gold-500 bg-deep-800"
+                          />
+                          {s.checkedIn ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/40 text-green-400 border border-green-500/20">Checked In</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-gray-400 border border-gray-600">Not Checked In</span>
+                          )}
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSingles.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No single registrations found.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {activeTab === "matches" && (

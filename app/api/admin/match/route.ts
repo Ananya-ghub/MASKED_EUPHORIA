@@ -8,8 +8,8 @@ export async function POST() {
   try {
     await dbConnect();
 
-    // Fetch all singles who want a pair
-    const singles = await Single.find({ wantsPair: true });
+    // Fetch all eligible singles (who want a pair and are checked in)
+    const singles = await Single.find({ wantsPair: true, checkedIn: true });
     
     // Generate matches based on criteria
     const { pairs, unmatched } = generateMatches(singles);

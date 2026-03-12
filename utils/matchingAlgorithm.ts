@@ -10,78 +10,83 @@ function isGenderCompatible(user1: any, user2: any): boolean {
 function calculateScore(user1: any, user2: any): number {
   let score = 0;
 
+  // Deal breaker conflict check (-3)
   if (user1.dealBreaker === "Too quiet" && user2.personalityType === "Very Introverted") score -= 3;
   if (user1.dealBreaker === "Too loud" && user2.personalityType === "Very Extroverted") score -= 3;
   if (user1.dealBreaker === "Not dancing" && user2.danceComfort === "I prefer not to dance") score -= 3;
   
-  // Reciprocal deal breaker check
   if (user2.dealBreaker === "Too quiet" && user1.personalityType === "Very Introverted") score -= 3;
   if (user2.dealBreaker === "Too loud" && user1.personalityType === "Very Extroverted") score -= 3;
   if (user2.dealBreaker === "Not dancing" && user1.danceComfort === "I prefer not to dance") score -= 3;
 
+  // Positive Compatibility Scoring
   if (user1.promVibe === user2.promVibe) score += 3;
   if (user1.musicPreference === user2.musicPreference) score += 2;
-  
-  // Personality similarity
   if (user1.personalityType === user2.personalityType) score += 2;
-  
   if (user1.energyLevel === user2.energyLevel) score += 2;
   if (user1.humorStyle === user2.humorStyle) score += 1;
   if (user1.danceComfort === user2.danceComfort) score += 1;
-
-  // Partner expectation check
-  if (user1.partnerExpectation === "Someone fun and energetic" && (user2.energyLevel === "High energy" || user2.energyLevel === "Absolute chaos")) score += 2;
-  if (user1.partnerExpectation === "Someone chill and easygoing" && (user2.energyLevel === "Calm & relaxed" || user2.energyLevel === "Moderate")) score += 2;
-  if (user2.partnerExpectation === "Someone fun and energetic" && (user1.energyLevel === "High energy" || user1.energyLevel === "Absolute chaos")) score += 2;
-  if (user2.partnerExpectation === "Someone chill and easygoing" && (user1.energyLevel === "Calm & relaxed" || user1.energyLevel === "Moderate")) score += 2;
+  if (user1.partnerExpectation === user2.partnerExpectation) score += 2;
 
   return score;
 }
 
 export function generateMatches(singles: any[]) {
-  const eligibleSingles = singles.filter(s => s.wantsPair);
+  // 1. Only eligible participants: wantsPair = true, checkedIn = true
+  const eligibleSingles = singles.filter(s => s.wantsPair && s.checkedIn);
   
-  // Using a greedy approach for pairings
-  let pool = [...eligibleSingles];
-  const pairs = [];
-  const unmatched = [];
+  const edges = [];
 
-  while (pool.length > 1) {
-    const current = pool.shift(); // take the first person
-    let bestMatchIndex = -1;
-    let highestScore = -Infinity;
-
-    for (let i = 0; i < pool.length; i++) {
-      const candidate = pool[i];
+  // 2. Global Optimization: Calculate compatibility scores between every eligible pair
+  for (let i = 0; i < eligibleSingles.length; i++) {
+    for (let j = i + 1; j < eligibleSingles.length; j++) {
+      const u1 = eligibleSingles[i];
+      const u2 = eligibleSingles[j];
       
       // Strict gender preference check before even calculating score
-      if (!isGenderCompatible(current, candidate)) {
-        continue;
+      if (isGenderCompatible(u1, u2)) {
+        const score = calculateScore(u1, u2);
+        edges.push({
+          u: i,
+          v: j,
+          score,
+          // Tie Resolution: Randomly select if still tied
+          rand: Math.random()
+        });
       }
-
-      const score = calculateScore(current, candidate);
-      
-      if (score > highestScore) {
-        highestScore = score;
-        bestMatchIndex = i;
-      }
-    }
-
-    if (bestMatchIndex !== -1) {
-      const bestMatch = pool.splice(bestMatchIndex, 1)[0];
-      pairs.push({
-        person1: current,
-        person2: bestMatch,
-        compatibilityScore: highestScore
-      });
-    } else {
-      unmatched.push(current);
     }
   }
 
-  // Any remaining person goes to unmatched
-  if (pool.length > 0) {
-    unmatched.push(pool[0]);
+  // 3. Sort pairs: highest mutual compatibility score first, then random tiebreak
+  edges.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return b.rand - a.rand; // Randomize ties (tie resolution rule 2)
+  });
+
+  const matchedIndices = new Set<number>();
+  const pairs = [];
+
+  // 4. Construct compatibility matches
+  for (const edge of edges) {
+    if (!matchedIndices.has(edge.u) && !matchedIndices.has(edge.v)) {
+      matchedIndices.add(edge.u);
+      matchedIndices.add(edge.v);
+      pairs.push({
+        person1: eligibleSingles[edge.u],
+        person2: eligibleSingles[edge.v],
+        compatibilityScore: edge.score
+      });
+    }
+  }
+
+  // 5. Aggregate unmatched users
+  const unmatched = [];
+  for (let i = 0; i < eligibleSingles.length; i++) {
+    if (!matchedIndices.has(i)) {
+      unmatched.push(eligibleSingles[i]);
+    }
   }
 
   return { pairs, unmatched };
