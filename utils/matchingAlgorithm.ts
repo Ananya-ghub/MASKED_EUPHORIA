@@ -1,7 +1,19 @@
 // Helper to determine if gender preferences align
 function isGenderCompatible(user1: any, user2: any): boolean {
-  const u1Match = user1.preferredMatch === "Anyone" || user1.preferredMatch === user2.gender;
-  const u2Match = user2.preferredMatch === "Anyone" || user2.preferredMatch === user1.gender;
+  const getPreference = (user: any) => {
+    if (!user.preferredMatch || user.preferredMatch.trim() === "") {
+      if (user.gender === "Male") return "Female";
+      if (user.gender === "Female") return "Male";
+      return "Anyone"; // Fallback for Other/Prefer not to say
+    }
+    return user.preferredMatch;
+  };
+
+  const p1 = getPreference(user1);
+  const p2 = getPreference(user2);
+
+  const u1Match = p1 === "Anyone" || p1 === user2.gender;
+  const u2Match = p2 === "Anyone" || p2 === user1.gender;
   
   return u1Match && u2Match;
 }
