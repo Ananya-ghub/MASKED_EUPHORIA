@@ -32,7 +32,7 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === "vitontop123") {
+    if (passwordInput === "MaskedEuphoria1403") {
       localStorage.setItem("adminAuthenticated", "true");
       setIsAuthenticated(true);
       setLoginError("");
