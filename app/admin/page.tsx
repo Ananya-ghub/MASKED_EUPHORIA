@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, User, HeartHandshake, Download, Loader2, LogOut } from "lucide-react";
+import { Users, User, HeartHandshake, Download, Loader2, LogOut, X } from "lucide-react";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("couples");
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [generatingMatches, setGeneratingMatches] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSingle, setSelectedSingle] = useState<any | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -356,14 +357,14 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {filteredSingles.map((s: any) => (
-                    <tr key={s._id} className="hover:bg-deep-800/50 transition-colors">
+                    <tr key={s._id} onClick={() => setSelectedSingle(s)} className="hover:bg-deep-800/50 transition-colors cursor-pointer">
                       <td className="px-4 py-3 font-medium text-white">{s.name} <br /><span className="text-xs text-gray-500 font-normal">{s.phone} | {s.email}</span></td>
                       <td className="px-4 py-3 text-gray-300">{s.regno}</td>
                       <td className="px-4 py-3 text-gray-300">{s.gender || "-"}</td>
                       <td className="px-4 py-3 text-gray-300">{s.preferredMatch || "-"}</td>
                       <td className="px-4 py-3 text-center">{s.wantsPair ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-900/40 text-purple-400 border border-purple-500/20">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
                       <td className="px-4 py-3 text-center">
-                        <label className="flex items-center justify-center cursor-pointer space-x-2">
+                        <label onClick={(e) => e.stopPropagation()} className="flex items-center justify-center cursor-pointer space-x-2">
                           <input 
                             type="checkbox" 
                             checked={!!s.checkedIn}
@@ -411,6 +412,87 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Participant Details Modal */}
+      {selectedSingle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedSingle(null)}>
+          <div 
+            className="glass-panel p-6 md:p-8 rounded-2xl border border-gold-500/30 w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setSelectedSingle(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-2xl font-serif font-bold text-white mb-6 border-b border-gray-800 pb-4">Participant Details</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Basic Information</h3>
+                <div className="space-y-2">
+                  <p><span className="text-gray-400">Name:</span> <span className="text-white font-medium">{selectedSingle.name}</span></p>
+                  <p><span className="text-gray-400">Reg No:</span> <span className="text-white font-medium">{selectedSingle.regno}</span></p>
+                  <p><span className="text-gray-400">Email:</span> <span className="text-white font-medium">{selectedSingle.email}</span></p>
+                  <p><span className="text-gray-400">Phone:</span> <span className="text-white font-medium">{selectedSingle.phone}</span></p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Status & Preferences</h3>
+                <div className="space-y-2">
+                  <p><span className="text-gray-400">Gender:</span> <span className="text-white font-medium">{selectedSingle.gender || "N/A"}</span></p>
+                  <p><span className="text-gray-400">Prefers Match:</span> <span className="text-white font-medium">{selectedSingle.preferredMatch || "N/A"}</span></p>
+                  <p><span className="text-gray-400">Wants Pair:</span> <span className="text-white font-medium">{selectedSingle.wantsPair ? "Yes" : "No"}</span></p>
+                  <p><span className="text-gray-400">Checked In:</span> <span className="text-white font-medium">{selectedSingle.checkedIn ? "Yes" : "No"}</span></p>
+                </div>
+              </div>
+            </div>
+
+            {selectedSingle.wantsPair && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-3 border-b border-gray-800 pb-2">Questionnaire Responses</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Prom Vibe</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.promVibe || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Music Preference</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.musicPreference || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Personality</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.personalityType || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Energy Level</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.energyLevel || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Humor Style</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.humorStyle || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Dance Comfort</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.danceComfort || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-gray-800/50">
+                    <p className="text-xs text-gold-500/70 mb-1">Partner Expectation</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.partnerExpectation || "N/A"}</p>
+                  </div>
+                  <div className="bg-deep-900/50 p-3 rounded-lg border border-red-900/30">
+                    <p className="text-xs text-red-400 mb-1">Deal Breaker</p>
+                    <p className="text-sm text-gray-200">{selectedSingle.dealBreaker || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
