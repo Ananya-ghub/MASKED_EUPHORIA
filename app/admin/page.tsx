@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, User, HeartHandshake, Download, Loader2 } from "lucide-react";
+import { Users, User, HeartHandshake, Download, Loader2, LogOut } from "lucide-react";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("couples");
@@ -13,9 +13,41 @@ export default function AdminDashboard() {
   const [generatingMatches, setGeneratingMatches] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   useEffect(() => {
-    fetchData();
+    const authFlag = localStorage.getItem("adminAuthenticated");
+    if (authFlag === "true") {
+      setIsAuthenticated(true);
+      fetchData();
+    } else {
+      setIsCheckingAuth(false);
+      setLoading(false);
+    }
   }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === "vitontop123") {
+      localStorage.setItem("adminAuthenticated", "true");
+      setIsAuthenticated(true);
+      setLoginError("");
+      setIsCheckingAuth(false);
+      setLoading(true);
+      fetchData();
+    } else {
+      setLoginError("Incorrect password. Please try again.");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminAuthenticated");
+    setIsAuthenticated(false);
+    setPasswordInput("");
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -162,26 +194,64 @@ export default function AdminDashboard() {
     matchesGenerated: matches.pairs.length
   };
 
-  if (loading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="w-10 h-10 text-gold-500 animate-spin" /></div>;
+  if (isCheckingAuth || (loading && isAuthenticated)) {
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="w-12 h-12 text-gold-500 animate-spin" /></div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="glass-panel p-8 rounded-2xl border border-gray-800 w-full max-w-md animate-fade-in relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600"></div>
+          <h1 className="text-3xl font-serif font-bold gold-gradient-text mb-6 text-center">Admin Access</h1>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <input
+                type="password"
+                placeholder="Password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full px-4 py-3 bg-deep-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all placeholder-gray-500"
+              />
+              {loginError && <p className="text-red-400 text-sm mt-2">{loginError}</p>}
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-deep-900 font-bold rounded-xl shadow-[0_0_15px_rgba(217,119,6,0.3)] transition-all flex items-center justify-center"
+            >
+              Enter Dashboard
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto animate-fade-in px-4">
+    <div className="w-full max-w-6xl mx-auto animate-fade-in px-4 pb-12 mt-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
         <div>
           <h1 className="text-4xl font-serif font-bold gold-gradient-text mb-2">Admin Dashboard</h1>
           <p className="text-gray-400">Manage Masked Euphoria Registrations</p>
         </div>
 
-        <button
-          onClick={handleGenerateMatches}
-          disabled={generatingMatches}
-          className="px-6 py-2.5 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-deep-900 font-bold rounded-lg shadow-[0_0_15px_rgba(217,119,6,0.3)] transition-all flex items-center disabled:opacity-50"
-        >
-          {generatingMatches ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <HeartHandshake className="w-5 h-5 mr-2" />}
-          Generate Matches
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerateMatches}
+            disabled={generatingMatches}
+            className="px-5 py-2.5 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-deep-900 font-bold rounded-lg shadow-[0_0_15px_rgba(217,119,6,0.3)] transition-all flex items-center disabled:opacity-50"
+          >
+            {generatingMatches ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <HeartHandshake className="w-5 h-5 mr-2" />}
+            Generate Matches
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2.5 bg-deep-800 hover:bg-deep-700 text-gray-300 font-medium rounded-lg border border-gray-700 transition-all flex items-center"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Statistics Panel */}
