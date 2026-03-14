@@ -74,8 +74,17 @@ export default function AdminDashboard() {
   const handleGenerateMatches = async () => {
     setGeneratingMatches(true);
     try {
-      const res = await fetch("/api/admin/match");
+      const res = await fetch("/api/admin/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+
       const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Generate matches failed", data);
+        return alert(data?.message || "Failed to generate matches");
+      }
 
       if (data.success) {
         setMatches({ pairs: data.pairs, unmatched: data.unmatched });
